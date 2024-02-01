@@ -1,0 +1,44 @@
+main:
+    chose the input file
+    open files
+    enter numbers of iterations (x)
+    enter size of population (y)
+    rewrite everthing from input.txt to a array
+    #create initial population
+    iterations x-times:
+        #find parents in population
+        #create crossover from parents
+        #make new population by mutating crossover
+    show cheapest entity from last population
+    
+#create initial population
+    it makes y-entities with random K-points by
+        randomises k points that dont repeate
+        find all conections of those points
+        if in entity is a single pint not conected to any other
+            try again making initial entity
+
+#find parents in population
+    it finds two cheapest entities from population
+
+#create crossover from parents
+    if parents similarity is more than 75% (if parents have more than 75% points the same)
+        crossover have points from the cheaper parents
+    else if parents are not so similar
+        creates a array of points from two parents
+        crossover have randomise k-points from this array
+
+#make new population by mutating crossover
+    makes y-entities in population again by
+        coping all points from crossover to entitys
+        randomise one diferent point to "mutate" this entity
+
+
+like in Hill Climbing it uses the same functions
+there are several more functions like
+    print entity which just prints the entity
+    entity value which just calculates the value of entity by summing the cost of each edges that conect every point in that entity
+    id of those two points connect which just searches in file id of conection that conect point a and b
+    checkers like:
+        is there a single point which cheks if in the entity is a point not conected to the rest by checking if there is at leats conection to at least one other point in entity
+        is the point already in entity which cheks if there might be in solution already the same point

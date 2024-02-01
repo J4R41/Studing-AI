@@ -1,0 +1,468 @@
+#include <iostream>
+#include <fstream>
+#include <cstdlib>
+#include <string>
+#include <ctime>
+#include <random>
+
+using namespace std;
+
+fstream inputFile, outputFile;
+int file[5000][4]; //[edgeID , 1point, 2point, costOfEdge]
+int k, nrOfVertices, nrOfEdges, nrOfIterations;
+int solution[200], neighbor[200];
+int setOfEdgesInSolution[500][4];
+int setOfEdgesInNeighbor[500][4];
+int nrOfEdgesInSolution;
+int nrOfEdgesInNeighbor;
+
+int neighborValue()
+{
+    int value = 0;
+    for (int i = 0; i < nrOfEdgesInNeighbor; i++)
+    {
+        value += setOfEdgesInNeighbor[i][3];
+    }
+    return value;
+}
+void printNeighbor()
+{
+    //cout << endl << "Neighbor" << endl;
+    outputFile << endl << "Neighbor" << endl;
+    for (int i = 0; i < k; i++)
+    {
+        //cout << neighbor[i] << " ";
+        outputFile << neighbor[i] << " ";
+    }
+    //cout << endl << "edges in neighbor:" << endl;
+    outputFile << endl << "edges in neighbor:" << endl;
+    for (int i = 0; i < nrOfEdgesInNeighbor; i++)
+    {
+        //cout << setOfEdgesInNeighbor[i][0] << "| ";
+        //cout << setOfEdgesInNeighbor[i][1] << " ";
+        //cout << setOfEdgesInNeighbor[i][2] << " C:";
+        //cout << setOfEdgesInNeighbor[i][3];
+        //cout << endl;
+        outputFile << setOfEdgesInNeighbor[i][0] << "| ";
+        outputFile << setOfEdgesInNeighbor[i][1] << " ";
+        outputFile << setOfEdgesInNeighbor[i][2] << " C:";
+        outputFile << setOfEdgesInNeighbor[i][3];
+        outputFile << endl;
+    }
+    //cout << "cost of neighbor: " << neighborValue() << endl;
+    outputFile << "cost of neighbor: " << neighborValue() << endl;
+}
+int solutionValue()
+{
+    int value = 0;
+    for (int i = 0; i < nrOfEdgesInSolution; i++)
+    {
+        value += setOfEdgesInSolution[i][3];
+    }
+    return value;
+}
+void printSolution()
+{
+    cout << endl << "Solution" << endl;
+    outputFile << endl << "Solution" << endl;
+    for (int i = 0; i < k; i++)
+    {
+        cout << solution[i] << " ";
+        outputFile << solution[i] << " ";
+    }
+    cout << endl << "edges in solution:" << endl;
+    outputFile << endl << "edges in solution:" << endl;
+    for (int i = 0; i < nrOfEdgesInSolution; i++)
+    {
+        if (setOfEdgesInSolution[i][0] != 0)
+        {
+            cout << setOfEdgesInSolution[i][0] << "| ";
+            cout << setOfEdgesInSolution[i][1] << " ";
+            cout << setOfEdgesInSolution[i][2] << " C:";
+            cout << setOfEdgesInSolution[i][3];
+            cout << endl;
+            outputFile << setOfEdgesInSolution[i][0] << "| ";
+            outputFile << setOfEdgesInSolution[i][1] << " ";
+            outputFile << setOfEdgesInSolution[i][2] << " C:";
+            outputFile << setOfEdgesInSolution[i][3];
+            outputFile << endl;
+        }
+    }
+    cout << "cost of solution: " << solutionValue() << endl;
+    outputFile << "cost of solution: " << solutionValue() << endl;
+}
+
+int IdOfThoseTwoPointsConnect(int point1, int point2) // returns 0 when no connection found
+{
+    if (point1 == 0 || point2 == 0)
+    {
+        return 0;
+    }
+    //cout << point1 << " " << point2 << " ";
+    for (int i = 0; i < nrOfEdges; i++)
+    {
+        if (file[i][1] == point1 && file[i][2] == point2)
+        {
+            //cout << "v" << endl;
+            return i + 1;
+        }
+        if (file[i][2] == point1 && file[i][1] == point2)
+        {
+            //cout << "v" << endl;
+            return i + 1;
+        }
+    }
+    //cout << "x" << endl;
+    return 0;
+}
+
+bool isThisPointAlreadyInNeighbor(int point)
+{
+    int howManyFound = 0;
+    for (int i = 0; i < k; i++)
+    {
+        if (neighbor[i] == point && neighbor[i] != 0)
+        {
+            howManyFound++;
+        }
+    }
+    if (howManyFound > 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+void writeAllConnectionsOfPointsInNeighbor()
+{
+    int l = 0;
+    int idOfConnection;
+    for (int i = 0; i < k; i++)
+    {
+        for (int j = 0; j < i; j++)
+        {
+            idOfConnection = IdOfThoseTwoPointsConnect(neighbor[i], neighbor[j]);
+            if (idOfConnection != 0)
+            {
+                setOfEdgesInNeighbor[l][0] = file[idOfConnection - 1][0];
+                setOfEdgesInNeighbor[l][1] = file[idOfConnection - 1][1];
+                setOfEdgesInNeighbor[l][2] = file[idOfConnection - 1][2];
+                setOfEdgesInNeighbor[l][3] = file[idOfConnection - 1][3];
+                l++;
+            }
+        }
+    }
+    nrOfEdgesInNeighbor = l;
+}
+bool isInNeighborASinglePoint()
+{
+    bool check = false;
+    for (int i = 0; i < k; i++)
+    {
+        for (int j = 0; j < nrOfEdgesInNeighbor; j++)
+        {
+            if (setOfEdgesInNeighbor[j][1] == neighbor[i])
+            {
+                check = true;
+            }
+            else if (setOfEdgesInNeighbor[j][2] == neighbor[i])
+            {
+                check = true;
+            }
+        }
+        if (check == false)
+        {
+            return true;
+        }
+        else if (check == true)
+        {
+            check = false;
+        }
+    }
+    return false;
+}
+
+bool isThisPointAlreadyInSolution(int point)
+{
+    int howManyFound = 0;
+    for (int i = 0; i < k; i++)
+    {
+        if (solution[i] == point && solution[i] != 0)
+        {
+            howManyFound++;
+        }
+    }
+    if (howManyFound > 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+void writeAllConnectionsOfPointsInSolution()
+{
+    int l = 0;
+    int idOfConnection;
+    for (int i = 0; i < k; i++)
+    {
+        for (int j = 0; j < i; j++)
+        {
+            idOfConnection = IdOfThoseTwoPointsConnect(solution[i], solution[j]);
+            if (idOfConnection != 0)
+            {
+                setOfEdgesInSolution[l][0] = file[idOfConnection - 1][0];
+                setOfEdgesInSolution[l][1] = file[idOfConnection - 1][1];
+                setOfEdgesInSolution[l][2] = file[idOfConnection - 1][2];
+                setOfEdgesInSolution[l][3] = file[idOfConnection - 1][3];
+                l++;
+            }
+        }
+    }
+    nrOfEdgesInSolution = l;
+}
+bool isInSolutionASinglePoint()
+{
+    bool check = false;
+    for (int i = 0; i < k; i++)
+    {
+        for (int j = 0; j < nrOfEdgesInSolution; j++)
+        {
+            if (setOfEdgesInSolution[j][1] == solution[i])
+            {
+                check = true;
+            }
+            else if (setOfEdgesInSolution[j][2] == solution[i])
+            {
+                check = true;
+            }
+        }
+        if (check == false)
+        {
+            return true;
+        }
+        else if (check == true)
+        {
+            check = false;
+        }
+    }
+    return false;
+}
+
+void copyNeighborToSolution()
+{
+    for (int i = 0; i < k; i++)
+    {
+        solution[i] = neighbor[i];
+    }
+
+    for (int i = 0; i < 500; i++)
+    {
+        setOfEdgesInNeighbor[i][0] = 0;
+        setOfEdgesInNeighbor[i][1] = 0;
+        setOfEdgesInNeighbor[i][2] = 0;
+        setOfEdgesInNeighbor[i][3] = 0;
+    }
+    for (int i = 0; i < 500; i++)
+    {
+        setOfEdgesInSolution[i][0] = 0;
+        setOfEdgesInSolution[i][1] = 0;
+        setOfEdgesInSolution[i][2] = 0;
+        setOfEdgesInSolution[i][3] = 0;
+    }
+    writeAllConnectionsOfPointsInSolution();
+}
+
+void createNeighbor()
+{
+    int newPoint;
+    do {
+        for (int i = 0; i < k; i++)
+        {
+            do {
+                newPoint = (rand() % nrOfVertices) + 1;
+            } while (isThisPointAlreadyInNeighbor(newPoint));
+            neighbor[i] = newPoint;
+        }
+        writeAllConnectionsOfPointsInNeighbor();
+        //printNeighbor();
+        //cout << endl;
+    } while (isInNeighborASinglePoint());
+}
+void createInitialSolution()
+{
+    int newPoint;
+    do {
+        for (int i = 0; i < k; i++)
+        {
+            do {
+                newPoint = (rand() % nrOfVertices) + 1;
+            } while (isThisPointAlreadyInSolution(newPoint));
+            solution[i] = newPoint;
+        }
+        writeAllConnectionsOfPointsInSolution();
+        printSolution();
+        //cout << endl;
+        outputFile << endl;
+    } while (isInSolutionASinglePoint());
+}
+int main()
+{
+    srand(static_cast<unsigned int>(time(nullptr)));
+
+    string inputFileString;
+    int choseInputFile;
+
+    cout << "0|test.txt" << endl;
+    cout << "1|file1.txt" << endl;
+    cout << "2|file3.txt" << endl;
+    cout << "3|file3.txt" << endl;
+    cout << "4|file4.txt" << endl;
+    cout << "5|file5.txt" << endl;
+    cout << "Chose inputFile (input number 0-5):";
+    cin >> choseInputFile;
+    cout << endl;
+    switch (choseInputFile)
+    {
+        case 0:
+            inputFileString = "test.txt";
+            break;
+        case 1:
+            inputFileString = "file1.txt";
+            break;
+        case 2:
+            inputFileString = "file2.txt";
+            break;
+        case 3:
+            inputFileString = "file3.txt";
+            break;
+        case 4:
+            inputFileString = "file4.txt";
+            break;
+        case 5:
+            inputFileString = "file5.txt";
+            break;
+        default:
+            cout << "Error: wrong input!" << endl;
+            return main();
+            break;
+    }
+
+    //input and output file basics
+    inputFile.open(inputFileString, ios::in);
+    if (inputFile.good() == false)
+    {
+        cout << "inputFile Error";
+        exit(0);
+    }
+    outputFile.open("outputFile.txt", ios::out | ios::app);
+    if (outputFile.good() == false)
+    {
+        cout << "outputFile Error";
+        exit(0);
+    }
+    outputFile << endl << "///////////////////////////////////////////////////////////////////////////////////////////////////" << endl;
+    outputFile << "Using file: " << inputFileString << endl;
+
+    //filling the arrays with zeros
+    for (int i = 0; i < 200; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            solution[i] = 0;
+            neighbor[i] = 0;
+        }
+    }
+
+    //entering the number of iterations
+    cout << "Enter number of iterations:";
+    cin >> nrOfIterations;
+    cout << endl;
+    outputFile << "Enter number of iterations:" << nrOfIterations << endl;
+
+    //data declaration//
+    string word1, word2, word3, word4;
+    int lineNr = 1;
+
+    //reading the file and writing as array
+    cout << "inputFile.txt" << endl;
+    while (inputFile >> word1 >> word2 >> word3 >> word4)
+    {
+        if (lineNr == 1)
+        {
+            k = stoi(word2);
+
+            cout << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+            outputFile << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+        }
+        else if (lineNr == 2)
+        {
+            nrOfVertices = stoi(word3);
+            nrOfEdges = stoi(word4);
+            if (nrOfEdges > 5000)
+            {
+                cout << "To much Edges (array overload)" << endl;
+                exit(0);
+            }
+
+            cout << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+            outputFile << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+        }
+        else {
+            file[lineNr - 2][0] = lineNr - 2; //edgeID
+            file[lineNr - 2][1] = stoi(word2); //1point
+            file[lineNr - 2][2] = stoi(word3); //2point
+            file[lineNr - 2][3] = stoi(word4); //costOfEdge
+
+            cout << lineNr - 2 << " " << word2 << " " << word3 << " " << word4 << endl;
+            outputFile << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+        }
+        lineNr++;
+    }
+    cout << "======+++++++++++++++++++++++++++++++++++++" << endl;
+    outputFile << "======+++++++++++++++++++++++++++++++++++++" << endl;
+
+    //create initial solution
+    createInitialSolution();
+    //cout << "Initial solution ready:" << endl;
+    outputFile << "Initial solution ready:" << endl;
+    printSolution();
+    //cout << endl;
+    outputFile << endl;
+
+    float percent;
+
+    //iterations
+    for (int i = 0; i < nrOfIterations; i++)
+    {
+        //cout << endl << "iteration nr " << i + 1 << ":                        " << i + 1 << endl;
+        outputFile << endl << "iteration nr " << i + 1 << ":                        " << i + 1 << endl;
+
+        percent = ((float)(i + 1) / nrOfIterations) * 100;
+        cout << "iteration: " << i + 1 << " => " << percent << "%" << endl;
+
+        createNeighbor();
+
+        printSolution();
+        printNeighbor();
+
+        if (neighborValue() <= solutionValue())
+        {
+            copyNeighborToSolution();
+        }
+    }
+
+    cout << endl << endl;
+    cout << "Best founded solution:" << endl;
+    outputFile << endl << endl;
+    outputFile << "Best founded solution:" << endl;
+    printSolution();
+
+    inputFile.close();
+    outputFile.close();
+    cout << endl;
+    return main();
+}

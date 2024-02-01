@@ -1,0 +1,28 @@
+#main:
+    chose the input file
+    open files
+    enter numbers of iterations
+    rewrite everthing from input.txt to a array
+    #create initial solution
+    iterations x-times:
+        #create neighbor
+        if neighbor is cheaper than solution
+            the solution becoes the cheaper neighbor
+    show solution
+
+#create initial solution:
+    randomises k points that dont repeate
+    find all conections of those points
+    if in solution is a single pint not conected to any other
+        try again making initial solution
+
+#create neighbor:
+    creates entity the same way the initial solution but instead randomising all points it randomise one point and the rest are copy from the solution
+
+there are several more functions like
+    print neighbor or print solution which just prints the neighbor or solution
+    solution value or neighbor value which just calculates the value of entity by summing the cost of each edges that conect every point in that entity
+    id of those two points connect which just searczes in file a id of conection that conect point a and b
+    checkers like:
+        is there a single point which chekes if in the solution or neighbor is a point not conected to the rest by checking if there is at leats conection to at least one other point in entity
+        is the point already in entity which cheks if there might be in solution already the same point

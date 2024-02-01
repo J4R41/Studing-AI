@@ -1,0 +1,540 @@
+#include <iostream>
+#include <fstream>
+#include <cstdlib>
+#include <string>
+#include <ctime>
+#include <random>
+
+using namespace std;
+
+fstream inputFile, outputFile;
+int file[5000][4]; //[edgeID , 1point, 2point, costOfEdge]
+int k, nrOfVertices, nrOfEdges, nrOfIterations;
+
+int setOfPointsFromParents[400];
+int sizeOfPopulation;
+int mutationInfluenceValue = 1; //must be less then k
+
+void printFile()
+{
+    for (int i = 0; i < nrOfEdges; i++)
+    {
+        cout << file[i][0] << "| ";
+        cout << file[i][1] << " ";
+        cout << file[i][2] << " C:";
+        cout << file[i][3];
+        cout << endl;
+        outputFile << file[i][0] << "| ";
+        outputFile << file[i][1] << " ";
+        outputFile << file[i][2] << " C:";
+        outputFile << file[i][3];
+        outputFile << endl;
+    }
+}
+
+class entity {
+public:
+    int points[200];
+    int setOfEdges[500][4];
+    int nrOfEdgesInEntity;
+
+    int value()
+    {
+        int value = 0;
+        for (int i = 0; i < nrOfEdgesInEntity; i++)
+        {
+            value += setOfEdges[i][3];
+        }
+        return value;
+    }
+    void print()
+    {
+        cout << endl << "Entity" << endl;
+        outputFile << endl << "Entity" << endl;
+        for (int i = 0; i < k; i++)
+        {
+            cout << points[i] << " ";
+            outputFile << points[i] << " ";
+        }
+        cout << endl << "edges in entity:" << endl;
+        outputFile << endl << "edges in entity:" << endl;
+        for (int i = 0; i < nrOfEdgesInEntity; i++)
+        {
+            cout << setOfEdges[i][0] << "| ";
+            cout << setOfEdges[i][1] << " ";
+            cout << setOfEdges[i][2] << " C:";
+            cout << setOfEdges[i][3];
+            cout << endl;
+            outputFile << setOfEdges[i][0] << "| ";
+            outputFile << setOfEdges[i][1] << " ";
+            outputFile << setOfEdges[i][2] << " C:";
+            outputFile << setOfEdges[i][3];
+            outputFile << endl;
+        }
+        cout << "cost of entity: " << value() << endl << endl;
+        outputFile << "cost of entity: " << value() << endl << endl;
+    }
+
+    void createInitialEntity()
+    {
+        int newPoint;
+        do {
+            for (int i = 0; i < k; i++)
+            {
+                do {
+                    newPoint = (rand() % nrOfVertices) + 1;
+                } while (isThisPointAlreadyInEntity(newPoint));
+                points[i] = newPoint;
+                //cout << "create initial entity, point:"<< i << endl;
+            }
+            //print();
+            writeAllConnectionsOfPointsInEntity();
+            //print();
+            //cout << "create initial entity, before single point test" << endl;
+        } while (isInEntityASinglePoint());
+        //cout << "create initial entity, initial entity ready" << endl;
+    }
+    void makeCrossoverEntity(int setOfPointsFromParents[])
+    {
+        //gets 2 sets of data from parents and make crossovered entity
+        // 
+        //(if parents have 100% similarity it can take years to randomise crossover)
+        int matchingCount = 0;
+        float similarityPercent = 0.75;
+
+        for (int i = 0; i < k; i++)
+        {
+            for (int j = k; j < k * 2; j++)
+            {
+                if (setOfPointsFromParents[i] == setOfPointsFromParents[j])
+                {
+                    matchingCount++;
+                    //cout << matchingCount << endl;
+                }
+            }
+        }
+        //if parents are more than 75% similar then crossover = parent1
+        if ((matchingCount * 1.0) / k > similarityPercent)
+        {
+            for (int i = 0; i < k; i++)
+            {
+                points[i] = setOfPointsFromParents[i];
+                //cout << points[i] << " ";
+            }
+            //cout << endl;
+            return;
+        }
+        //if parents arent similar than randomise crossover points from parents points
+        int newPoint;
+        int newIdOfPoint;
+        do {
+            for (int i = 0; i < k; i++)
+            {
+                do {
+                    newIdOfPoint = rand() % (k * 2);
+                    newPoint = setOfPointsFromParents[newIdOfPoint];
+                } while (isThisPointAlreadyInEntity(newPoint));
+                points[i] = newPoint;
+            }
+            writeAllConnectionsOfPointsInEntity();
+        } while (isInEntityASinglePoint());
+    }
+    void makeMutatedEntity(entity crossover)
+    {
+        //get 1 set of data and create mutated entityint newPoint;
+        int newPoint;
+        int newIdOfPoint;
+
+        do {
+            for (int i = 0; i < k; i++)
+            {
+                points[i] = crossover.points[i];
+            }
+            for (int i = 0; i < mutationInfluenceValue; i++)
+            {
+                do {
+                    //cout << "#randpoint"<<endl;
+                    newIdOfPoint = rand() % k;
+                    newPoint = (rand() % nrOfEdges) + 1;
+                } while (isThisPointAlreadyInEntity(newPoint));
+                points[newIdOfPoint] = newPoint;
+                //cout << "#point" << i << endl;
+            }
+            writeAllConnectionsOfPointsInEntity();
+            //this->print();
+            //crossover.print();
+            //cout << "repeat" << endl;
+        } while (isInEntityASinglePoint());
+    }
+private:
+    int IdOfThoseTwoPointsConnect(int point1, int point2) // returns 0 when no connection found
+    {
+        if (point1 == 0 || point2 == 0)
+        {
+            //cout << "x0" << endl;
+            return 0;
+        }
+        for (int i = 0; i < nrOfEdges; i++)
+        {
+            if (file[i][1] == point1 && file[i][2] == point2)
+            {
+                //cout << "v" << endl;
+                return i + 1;
+            }
+            if (file[i][2] == point1 && file[i][1] == point2)
+            {
+                //cout << "v" << endl;
+                return i + 1;
+            }
+        }
+        //cout << "x" << endl;
+        return 0;
+    }
+    bool isThisPointAlreadyInEntity(int point)
+    {
+        int howManyFound = 0;
+        for (int i = 0; i < k; i++)
+        {
+            if (points[i] == point && points[i] != 0)
+            {
+                howManyFound++;
+            }
+        }
+        if (howManyFound > 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    void writeAllConnectionsOfPointsInEntity()
+    {
+        int l = 0;
+        int idOfConnection;
+        for (int i = 0; i < k; i++)
+        {
+            for (int j = 0; j < i; j++)
+            {
+                idOfConnection = IdOfThoseTwoPointsConnect(points[i], points[j]);
+                if (idOfConnection != 0)
+                {
+                    setOfEdges[l][0] = file[idOfConnection - 1][0];
+                    setOfEdges[l][1] = file[idOfConnection - 1][1];
+                    setOfEdges[l][2] = file[idOfConnection - 1][2];
+                    setOfEdges[l][3] = file[idOfConnection - 1][3];
+                    l++;
+                }
+            }
+        }
+        nrOfEdgesInEntity = l;
+    }
+    bool isInEntityASinglePoint()
+    {
+        bool check = false;
+        for (int i = 0; i < k; i++)
+        {
+            for (int j = 0; j < nrOfEdgesInEntity; j++)
+            {
+                if (setOfEdges[j][1] == points[i])
+                {
+                    check = true;
+                }
+                else if (setOfEdges[j][2] == points[i])
+                {
+                    check = true;
+                }
+            }
+            if (check == false)
+            {
+                return true;
+            }
+            else if (check == true)
+            {
+                check = false;
+            }
+        }
+        return false;
+    }
+};
+
+entity parent1, parent2, crossover;
+entity population[1000];
+
+void findParentsInPopulation()
+{
+    //find 2 cheapest Entities in Population
+    int cheapestValue = INT_MAX;
+    int secondCheapestValue = INT_MAX;
+    int previousId = 0;
+    int id = 0;
+    for (int i = 0; i < sizeOfPopulation; i++)
+    {
+        if (population[i].value() < cheapestValue) {
+            secondCheapestValue = cheapestValue;
+            cheapestValue = population[i].value();
+            previousId = id;
+            id = i;
+        }
+        else if (population[i].value() < secondCheapestValue) {
+            secondCheapestValue = population[i].value();
+            previousId = i;
+        }
+    }
+    parent1 = population[id];
+    parent2 = population[previousId];
+    cout << "parent1: entity nr " << id + 1 << " parent2: entity nr " << previousId + 1 << endl;
+    outputFile << "parent1: entity nr " << id + 1 << " parent2: entity nr " << previousId + 1 << endl;
+}
+void createCrossoverFromParents()
+{
+    //make set of points from parents
+    for (int i = 0; i < k * 2; i++)
+    {
+        if (i < k)
+        {
+            setOfPointsFromParents[i] = parent1.points[i];
+        }
+        else
+        {
+            setOfPointsFromParents[i] = parent2.points[i - k];
+        }
+    }
+    //make a crossover entity
+    crossover.makeCrossoverEntity(setOfPointsFromParents);
+    cout << "crossover:" << endl;
+    outputFile << "crossover:" << endl;
+    crossover.print();
+    cout << endl;
+    outputFile << endl;
+}
+void makeNewPopulationByMutatingCrossover()
+{
+    //get crossover and fill population array with mutants
+    for (int i = 0; i < sizeOfPopulation; i++)
+    {
+        population[i].makeMutatedEntity(crossover);
+        cout << ((i+1) * 1.0 / sizeOfPopulation) * 100 << "% population ready" << endl;
+        outputFile << (i * 1.0 / k) * 100 << "% population ready" << endl;
+    }
+    cout << endl;
+    outputFile << endl;
+}
+
+void printSmallSetOfPopulation()
+{
+    for (int i = 0; i < sizeOfPopulation; i++)
+    {
+        cout << "entity nr:" << i + 1 << "      value: " << population[i].value() << "      Points: ";
+        outputFile << "entity nr:" << i + 1 << "      value: " << population[i].value() << "      Points: ";
+        for (int j = 0; j < k; j++)
+        {
+            cout << population[i].points[j] << " ";
+            outputFile << population[i].points[j] << " ";
+        }
+        cout << endl;
+        outputFile << endl;
+    }
+    cout << endl << endl;
+    outputFile << endl << endl;
+}
+void printPopulation()
+{
+    for (int i = 0; i < sizeOfPopulation; i++)
+    {
+        cout << "entity nr:" << i + 1 << endl;
+        outputFile << "entity nr:" << i + 1 << endl;
+        population[i].print();
+        cout << endl << endl;
+        outputFile << endl << endl;
+    }
+    cout << endl;
+    outputFile << endl;
+    cout << "population values:" << endl;
+    outputFile << "population values:" << endl;
+    printSmallSetOfPopulation();
+    cout << endl;
+    outputFile << endl;
+}
+void cheapestEntityFromLastPopulation()
+{
+    //find cheapest Entiti in Population
+    int cheapestValue = INT_MAX;
+    int id = 0;
+    for (int i = 0; i < sizeOfPopulation; i++)
+    {
+        if (population[i].value() < cheapestValue) {
+            cheapestValue = population[i].value();
+            id = i;
+        }
+    }
+    population[id].print();
+}
+
+int main()
+{
+    srand(static_cast<unsigned int>(time(nullptr)));
+
+    string inputFileString;
+    int choseInputFile;
+
+    cout << "0|test.txt" << endl;
+    cout << "1|file1.txt" << endl;
+    cout << "2|file3.txt" << endl;
+    cout << "3|file3.txt" << endl;
+    cout << "4|file4.txt" << endl;
+    cout << "5|file5.txt" << endl;
+    cout << "Chose inputFile (input number 0-5):";
+    cin >> choseInputFile;
+    cout << endl;
+    switch (choseInputFile)
+    {
+    case 0:
+        inputFileString = "test.txt";
+        break;
+    case 1:
+        inputFileString = "file1.txt";
+        break;
+    case 2:
+        inputFileString = "file2.txt";
+        break;
+    case 3:
+        inputFileString = "file3.txt";
+        break;
+    case 4:
+        inputFileString = "file4.txt";
+        break;
+    case 5:
+        inputFileString = "file5.txt";
+        break;
+    default:
+        cout << "Error: wrong input!" << endl;
+        return main();
+        break;
+    }
+
+    //input and output file basics
+    inputFile.open(inputFileString, ios::in);
+    if (inputFile.good() == false)
+    {
+        cout << "inputFile Error";
+        exit(0);
+    }
+    outputFile.open("outputFile.txt", ios::out | ios::app);
+    if (outputFile.good() == false)
+    {
+        cout << "outputFile Error";
+        exit(0);
+    }
+    outputFile << endl << "///////////////////////////////////////////////////////////////////////////////////////////////////" << endl;
+    outputFile << "Using file: " << inputFileString << endl;
+
+    //entering the number of iterations
+    cout << "Enter number of iterations:";
+    cin >> nrOfIterations;
+    cout << endl;
+    outputFile << "Enter number of iterations:" << nrOfIterations << endl;
+
+    //enter size of population
+    cout << "Enter size of population:";
+    cin >> sizeOfPopulation;
+    cout << endl;
+    outputFile << "Enter size of population:" << sizeOfPopulation << endl;
+
+    //data declaration//
+    string word1, word2, word3, word4;
+    int lineNr = 1;
+
+    //reading the file and writing as array
+    cout << "inputFile.txt" << endl;
+    outputFile << "inputFile.txt" << endl;
+    while (inputFile >> word1 >> word2 >> word3 >> word4)
+    {
+        if (lineNr == 1)
+        {
+            k = stoi(word2);
+
+            //cout << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+            //outputFile << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+        }
+        else if (lineNr == 2)
+        {
+            nrOfVertices = stoi(word3);
+            nrOfEdges = stoi(word4);
+            if (nrOfEdges > 5000)
+            {
+                cout << "To much Edges (array overload)" << endl;
+                exit(0);
+            }
+
+            //cout << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+            //outputFile << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+        }
+        else {
+            file[lineNr - 2][0] = lineNr - 2; //edgeID
+            file[lineNr - 2][1] = stoi(word2); //1point
+            file[lineNr - 2][2] = stoi(word3); //2point
+            file[lineNr - 2][3] = stoi(word4); //costOfEdge
+
+            //cout << lineNr - 2 << " " << word2 << " " << word3 << " " << word4 << endl;
+            //outputFile << word1 << " " << word2 << " " << word3 << " " << word4 << endl;
+        }
+        lineNr++;
+    }
+    cout << "======+++++++++++++++++++++++++++++++++++++" << endl;
+    outputFile << "======+++++++++++++++++++++++++++++++++++++" << endl;
+    printFile();
+    cout << "======+++++++++++++++++++++++++++++++++++++" << endl;
+    outputFile << "======+++++++++++++++++++++++++++++++++++++" << endl;
+
+    //create initial population of entities
+    for (int i = 0; i < sizeOfPopulation; i++)
+    {
+        //cout << "v";
+        population[i].createInitialEntity();
+        //cout << "x";
+    }
+    printPopulation();
+
+    float percent;
+
+    //iterations
+    for (int i = 0; i < nrOfIterations; i++)
+    {
+        //cout << endl << "iteration nr " << i + 1 << ":                        " << i + 1 << endl;
+        //outputFile << endl << "iteration nr " << i + 1 << ":                        " << i + 1 << endl;
+
+        percent = ((float)(i + 1) / nrOfIterations) * 100;
+        cout << "iteration: " << i + 1 << " =>                         " << percent << "%" << endl;
+        outputFile << "iteration: " << i + 1 << " =>                         " << percent << "%" << endl;
+
+        //iteration code
+        cout << "parents" << endl;
+        outputFile << "parents" << endl;
+        findParentsInPopulation();
+        cout << "crossover" << endl;
+        outputFile << "crossover" << endl;
+        createCrossoverFromParents();
+        cout << "mutating crossover:" << endl;
+        outputFile << "mutating crossover:" << endl;
+        makeNewPopulationByMutatingCrossover();
+        cout << "new population" << endl;
+        outputFile << "new population" << endl;
+        printPopulation();
+    }
+
+    //print last population
+    cout << endl << "Last population:" << endl;
+    outputFile << endl << "Last population:" << endl;
+    printPopulation();
+
+    cout << endl << "Cheapest entity from last population:" << endl;
+    outputFile << endl << "Cheapest entity from last population:" << endl;
+    cheapestEntityFromLastPopulation();
+
+    inputFile.close();
+    outputFile.close();
+    cout << endl;
+    return main();
+}
